@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ## Run
 
-python -m src.animate
+python -m src.animate --cache --to-plot=relconfirmed --country=Italy
 
 ## Extra requirements
 

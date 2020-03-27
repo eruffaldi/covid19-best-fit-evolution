@@ -46,8 +46,8 @@ def run(country, region="", to_plot='confirmed', save=False, path=None, cached=F
         Whether to loop the animation or stop at last frame
     """
 
-    if to_plot not in ['confirmed', 'deaths']:
-        raise ValueError("'to_plot' must be in {'confirmed', 'deaths'}")
+    if to_plot not in ['confirmed', 'deaths','relconfirmed','hospitalized']:
+        raise ValueError("'to_plot' must be in {'confirmed', 'deaths','relconfirmed','hospitalized'}")
 
     if region == "":
         target = "world.json"
@@ -71,18 +71,29 @@ def run(country, region="", to_plot='confirmed', save=False, path=None, cached=F
         df = pd.DataFrame(data[country])
     elif country == "Italy":
         df = pd.DataFrame(data)
-        df = df.rename(columns=dict(data="date", totale_attualmente_positivi="confirmed",
-                                    deceduti="deaths", denominazione_regione="region"))
+        df = df.rename(columns=dict(data="date", totale_attualmente_positivi="confirmed",tamponi='kits',
+                                    deceduti="deaths", denominazione_regione="region",ricoverati_con_sintomi="hospitalized"))
         if region != "all" and region[0] != "m":
             df = df[df["region"] == region]
+            if to_plot == "relconfirmed":
+                df[to_plot] = df['confirmed']/df["kits"]*100
         else:
             if region[0] == "m":
                 df = df[df["region"] != region[1:]]
-            df = df.groupby(["date"], as_index=False).agg(
-                dict([(to_plot, "sum")]))
+            if to_plot == "relconfirmed":
+                df = df.groupby(["date"], as_index=False).agg(
+                    dict([("kits", "sum"),("confirmed","sum")]))
+                df[to_plot] = df['confirmed']/df["kits"]*100
+            else:
+                df = df.groupby(["date"], as_index=False).agg(
+                    dict([(to_plot, "sum")]))
 
     if to_plot == 'confirmed':
         min_cases = config.MIN_CONFIRMED_CASES
+    elif to_plot == 'relconfirmed':
+        min_cases = 0.0001
+    elif to_plot == 'hospitalized':
+        min_cases = config.MIN_DEATHS
     else:
         min_cases = config.MIN_DEATHS
     df = df[df[to_plot] > min_cases]
@@ -194,19 +205,12 @@ def run(country, region="", to_plot='confirmed', save=False, path=None, cached=F
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Shows Fitting')
-<< << << < HEAD
 parser.add_argument('--country', default="Italy")
 parser.add_argument('--region', default="")
 parser.add_argument('--to-plot', default="confirmed",
-                    choices=["deaths", "confirmed"])
+                    choices=["deaths", "confirmed","relconfirmed","hospitalized"])
 parser.add_argument('--cached', action="store_true")
 parser.add_argument('--no-repeat', action="store_true")
-== == == =
-parser.add_argument('--country', default='Italy', choices=['Italy'])
-parser.add_argument('--to-plot', default='confirmed',
-                    choices=['deaths', 'confirmed'])
-
->>>>>> > 7bf628770aca9f71448256d988db75975313ff2a
 args = parser.parse_args()
 
 run(args.country, region=args.region, to_plot=args.to_plot,
